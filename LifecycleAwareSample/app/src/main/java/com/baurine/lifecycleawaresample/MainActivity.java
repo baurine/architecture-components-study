@@ -7,6 +7,7 @@ import android.os.Bundle;
 import android.os.SystemClock;
 import android.support.annotation.Nullable;
 import android.util.Log;
+import android.view.View;
 import android.widget.Chronometer;
 import android.widget.TextView;
 
@@ -38,5 +39,11 @@ public class MainActivity extends LifecycleActivity {
                 Log.i("Timer", "Update timer");
             }
         });
+    }
+
+    public void onClick(View view) {
+        if (view.getId() == R.id.btn_location) {
+            LocationActivity.launch(this);
+        }
     }
 }

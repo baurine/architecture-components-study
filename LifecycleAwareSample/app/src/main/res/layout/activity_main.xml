@@ -22,9 +22,18 @@
         android:layout_centerHorizontal="true"/>
 
     <TextView
-        android:layout_centerHorizontal="true"
         android:id="@+id/timer_textview"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@id/hello_textview"/>
+        android:layout_below="@id/hello_textview"
+        android:layout_centerHorizontal="true"/>
+
+    <Button
+        android:id="@+id/btn_location"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/timer_textview"
+        android:layout_centerHorizontal="true"
+        android:onClick="onClick"
+        android:text="Go LocationActivity"/>
 </RelativeLayout>
