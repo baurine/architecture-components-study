@@ -44,6 +44,8 @@ public class MainActivity extends LifecycleActivity {
     public void onClick(View view) {
         if (view.getId() == R.id.btn_location) {
             LocationActivity.launch(this);
+        } else if (view.getId() == R.id.btn_seekbar) {
+            SeekbarActivity.launch(this);
         }
     }
 }
