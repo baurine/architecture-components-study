@@ -20,4 +20,11 @@
         android:layout_height="wrap_content"
         android:layout_above="@+id/hello_textview"
         android:layout_centerHorizontal="true"/>
+
+    <TextView
+        android:layout_centerHorizontal="true"
+        android:id="@+id/timer_textview"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/hello_textview"/>
 </RelativeLayout>
