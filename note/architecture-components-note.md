@@ -1,6 +1,6 @@
 # Android Architecture Components Note
 
-Google 在 Google I/O 2017 发布的 Android Architecture Components，包括 Lifecycle，LiveData，ViewModel 以及 Room 组成。其中 Room 是独立的部分，其余三部分是有关联的，其中 Lifecycle 是基础，LiveData 用到 Lifecycle，而 ViewModel 是作为 LiveData 的容器，因此，它们逐层递进。
+Google 在 Google I/O 2017 发布的 Android Architecture Components，包括 Lifecycle，LiveData，ViewModel 以及 Room 组成。其中 Room 是独立的部分，其余三部分是有关联的，其中 Lifecycle 是基础，LiveData 用到 Lifecycle，而 ViewModel 是作为 LiveData 的容器，因此，它们逐层递进。个人觉得 LiveData 是这里稍微最复杂的部分。
 
 ## References
 
@@ -328,6 +328,10 @@ Lifecycle 的最佳实践：略，理解。
 
 (感觉和 Databinding 中的 ObservableField 有一点相似之处，对原始的 model 进行一层包装，但 LiveData 多了生命周期的处理)
 
+疑问：
+
+1. LiveData 和 MutableLiveData 的区别，从名字上后者是表示易变的，但从代码实现上看，没什么区别啊。
+
 #### 基本理解
 
 LiveData 和 LifecycleOwner 一起配合使用。LiveData 一般用单例模式，它可以向自身注册多个普通的 Observer，但每个注册的 observer 都必须和一个 LifecycleOwner 关联，每次注册观察者时，LiveData 会把 owner 和 observer 再打包成一个 LifecycleBoundObserver (LifecycleBoundObserver 是 LiveData 的内部类，所以它自然也引用了 LiveData)，然后把这个新的 observer 同时放入 LiveData 对象自身内部的观察者队列，以及 owner 内部的观察者队列中。(相当于新的 observer 同时注册到了 LiveData 和 LifecycleOwner 中，但不同的 observer 注册到的 LiveData 是同一个，LifecycleOwner 可以是多个，LiveData 和 LifecycleOwner 的关系是一对多)。
@@ -477,3 +481,9 @@ ViewModel 的主要作用，延长 data 的生命周期：
 像上面这种场景，ViewModel 是不是就不适用了呢?
 
 之前上面在讲 LiveData 时，一个 LiveData 可以用于多个 LifecycleOwner，所以 LiveData 一般用单例，而有了 ViewModel 后，ViewModel 的行为类似单例，因为它在一定程序上代替了 LiveData 的单例行为。
+
+### Codelab
+
+1. Lifecycle
+
+   通过代码实践，掌握了其基本用法，ViewModel 里可以直接存放原始 model，不一定用来放 LiveData；LiveData 可以直接拿来用，不一定要实现派生类。
