@@ -1,6 +1,6 @@
 # Android Architecture Components Note
 
-Google 在 Google I/O 2017 发布的 Android Architecture Components，包括 Lifecycle，LiveData，ViewModel 以及 Room 组成。其中 Room 是独立的部分，其余三部分是有关联的，其中 Lifecycle 是基础，LiveData 用到 Lifecycle，而 ViewModel 是作为 LiveData 的容器，因此，它们逐层递进。个人觉得 LiveData 是这里稍微最复杂的部分。
+Google 在 Google I/O 2017 发布的 Android Architecture Components，包括 Lifecycle，LiveData，ViewModel 以及 Room 组成。其中 Lifecycle 是基础，LiveData 用到 Lifecycle，而 ViewModel 一般是作为 LiveData 的容器，因此，它们逐层递进。个人觉得 LiveData 是这里稍微最复杂的部分。Room 作为 ORM，比较独立，但一般会和 LiveData 配合使用。
 
 ## References
 
@@ -18,7 +18,7 @@ Google 在 Google I/O 2017 发布的 Android Architecture Components，包括 Li
 1. Handling Lifecycle
 1. LiveData
 1. ViewModel
-1. Room Persistence Libraray：这篇也可以放在 Handling Lifecycle 之前看，因为比较独立
+1. Room Persistence Libraray
 1. 尝试 codelab 中的代码
 1. Guide to App Architecture：最后再回来看这篇指南
 1. 看 [googlesamples/android-architecture-components](https://github.com/googlesamples/android-architecture-components) 中的代码
@@ -29,147 +29,6 @@ Google 在 Google I/O 2017 发布的 Android Architecture Components，包括 Li
 
 设置 google maven 及添加 Lifecycle、LiveData、ViewModel、Room 等的依赖，略。
 
-### Room
-
-source: [Room Persistence Library（官网文档翻译）](http://www.jcodecraeer.com/a/anzhuokaifa/androidkaifa/2017/0525/7971.html)
-
-Room 是 google android 官方的 ORM，用来简化 SQLite 操作。先大致了解一下。
-
-Room 有三个主要的组件：
-
-- Database，表示整个数据库的实例，一般一个应用中只需要一个全局的 Database 实例。
-- Entity，表示数据库中的一个表。对每一个 entity，都会创建一个表来持有这些 item。entity 中的每一个 field 都将被持久化到数据库。
-- DAO，Database Access Object，DAO 是 Room 的主要组件，它负责从 Database 中增删改查 Entity。
-
-它们之间的关系，正如上面所言，从 Database 中得到 DAO，DAO 从 database 中操作 Entity，包括 Insert / Delete / Update / Query。
-
-一个简单的例子。定义 Entity，用 @Entity 注解 Entity 类。
-
-    @Entity
-    public class User {
-      @PrimaryKey
-      private int uid;
-
-      @ColumnInfo(name = "first_name")
-      private String firstName;
-
-      @ColumnInfo(name = "last_name")
-      private String lastName;
-
-      // Getters and setters are ignored for brevity,
-      // but they're required for Room to work.
-    }
-
-用 @Dao 注解定义 DAO 类，DAO 是抽象类，由 Room 在编译过程中生成实体类，就跟 Retrofit 中定义 API 接口类，Dagger2 中定义 Component 一样。
-
-    @Dao
-    public interface UserDao {
-      @Query("SELECT * FROM user")
-      List<User> getAll();
-
-      @Query("SELECT * FROM user WHERE uid IN (:userIds)")
-      List<User> loadAllByIds(int[] userIds);
-
-      @Query("SELECT * FROM user WHERE first_name LIKE :first AND "
-              + "last_name LIKE :last LIMIT 1")
-      User findByName(String first, String last);
-
-      @Insert
-      void insertAll(User... users);
-
-      @Delete
-      void delete(User user);
-    }
-
-用 @Database 注解定义 Database 类，同样也是抽象类。(继续联想 Retrofit 和 Dagger2 的用法)。
-
-    @Database(entities = {User.class}, version = 1)
-    public abstract class AppDatabase extends RoomDatabase {
-      public abstract UserDao userDao();
-    }
-
-最后，如何使用，先得到 AppDatabase 的实例 (最好用单例模式，全局只需要一个实例)，然后从 AppDatabase 的实例中得到 useDao。
-
-    AppDatabase db = Room.databaseBuilder(getApplicationContext(),
-            AppDatabase.class, "database-name").build();
-    UserDao userDao = db.userDao();
-
-剩下就是这三个组件的一些常见用法，简单了解，需要时再详细看文档。
-
-对于 Entity：
-
-- 可以用 @Ingnore 忽略不需要持久化到数据库的属性
-- 用 @Entity(tableName='table_name') 指定表名，而不使用默认的类名作为表名
-- 用 @Index 添加索引
-- 用 @ForeignKey 指定外键和关联
-- @Embedded，嵌套对象，类似 GraphQL 中的 Fragment
-
-对于 DAO：
-
-- @Insert
-- @Delete
-- @Update
-- @Query
-- 向查询中传递参数：`@Query("SELECT * FROM user WHERE age > :minAge")`
-- 返回子集，即非 Entity 对象，而是常规的 POJO 对象
-- 可观察的查询：LiveData，可以监听数据库的变化，从而自动更新 UI (?? 是这么理解吧)
-- 查询返回 RxJava2 的 Publisher 和 Flowable 对象 (暂时不理解)
-- 查询中返回原始的 cursor 对象，不推荐使用
-- 多表查询，支持 join
-
-使用类型转换器，TypeConverter，把自定义的数据类型，转换成 Room 能够持久化的数据类型。
-
-定义转换器：
-
-    public class Converters {
-      @TypeConverter
-      public static Date fromTimestamp(Long value) {
-        return value == null ? null : new Date(value);
-      }
-
-      @TypeConverter
-      public static Long dateToTimestamp(Date date) {
-        return date == null ? null : date.getTime();
-      }
-    }
-
-然后把 TypeConverter 通过 @TypeConverters 注解添加到 AppDatabase 类中。(为什么全靠注解??)
-
-    @Database(entities = {User.java}, version = 1)
-    @TypeConverters({Converter.class})
-    public abstract class AppDatabase extends RoomDatabase {
-      public abstract UserDao userDao();
-    }
-
-(想想 Databinding 的 @BindingConversion，是不是很想似，一样是注解，一样是静态方法，实现类型转换)
-
-#### 数据库迁移
-
-实现 Migration 类的 migrate 方法，在 migrate 方法中通过执行 sql 语句实现迁移，并将 Migration 实例注册到生成 Database 的 builder 中。
-
-    Room.databaseBuilder(getApplicationContext(), MyDb.class, "database-name")
-            .addMigrations(MIGRATION_1_2, MIGRATION_2_3).build();
-
-    static final Migration MIGRATION_1_2 = new Migration(1, 2) {
-      @Override
-      public void migrate(SupportSQLiteDatabase database) {
-          database.execSQL("CREATE TABLE `Fruit` (`id` INTEGER, "
-                  + "`name` TEXT, PRIMARY KEY(`id`))");
-      }
-    };
-
-    static final Migration MIGRATION_2_3 = new Migration(2, 3) {
-      @Override
-      public void migrate(SupportSQLiteDatabase database) {
-          database.execSQL("ALTER TABLE Book "
-                  + " ADD COLUMN pub_year INTEGER");
-      }
-    };
-
-#### 测试迁移
-
-略。
-
 ### Handling Lifecycle
 
 source: [使用 Lifecycle 处理生命周期](http://www.jcodecraeer.com/a/anzhuokaifa/androidkaifa/2017/0524/7969.html) 这篇文章，大致明白了 Lifecycle 的原理和作用，我理解成这类似一种控制反转，一种观察者模式或者一种解耦。
@@ -179,6 +38,8 @@ source: [使用 Lifecycle 处理生命周期](http://www.jcodecraeer.com/a/anzhu
 1. Lifecycle：核心，管理 LifecycleObserver 队列，接受生命周期组件(如 Activity/Fragment)的状态，并通知给各个 LifecycleObserver，在生命周期组件结束时，自动清除 LifecycleObserver。实现类 LifecycleRegistry。
 1. LifecycleOwner：持有 Lifecycle 实例的类，一般由生命周期组件(如 Activity/Fragment)实现。派生类 LifecycleRegistryOwner，由 LifecycleActivity/LifecycleFragment 实现，它们内部持有 LifecycleRegistry 实例。
 1. LifecycleObserver：注册到 Lifecycle 中的观察者，由各个业务实现。
+
+(待补充一张图)
 
 在没有使用 Lifecycle 之前，我们把主要的逻辑都写在每个 Activity/Fragment 的生命周期函数中，每个 Activity/Fragment 的代码都会不一样，由 Activity/Fragment 主动去调用我们实现的这些类的方法，它们紧密地耦合在一起。比如示例中的代码：
 
@@ -482,8 +343,210 @@ ViewModel 的主要作用，延长 data 的生命周期：
 
 之前上面在讲 LiveData 时，一个 LiveData 可以用于多个 LifecycleOwner，所以 LiveData 一般用单例，而有了 ViewModel 后，ViewModel 的行为类似单例，因为它在一定程序上代替了 LiveData 的单例行为。
 
+### Room
+
+source: [Room Persistence Library（官网文档翻译）](http://www.jcodecraeer.com/a/anzhuokaifa/androidkaifa/2017/0525/7971.html)
+
+Room 是 google android 官方的 ORM，用来简化 SQLite 操作。先大致了解一下。
+
+Room 有三个主要的组件：
+
+- Database，表示整个数据库的实例，一般一个应用中只需要一个全局的 Database 实例。
+- Entity，表示数据库中的一个表。对每一个 entity，都会创建一个表来持有这些 item。entity 中的每一个 field 都将被持久化到数据库。
+- DAO，Database Access Object，DAO 是 Room 的主要组件，它负责从 Database 中增删改查 Entity。
+
+它们之间的关系，正如上面所言，从 Database 中得到 DAO，DAO 从 database 中操作 Entity，包括 Insert / Delete / Update / Query。
+
+一个简单的例子。定义 Entity，用 @Entity 注解 Entity 类。
+
+    @Entity
+    public class User {
+      @PrimaryKey
+      private int uid;
+
+      @ColumnInfo(name = "first_name")
+      private String firstName;
+
+      @ColumnInfo(name = "last_name")
+      private String lastName;
+
+      // Getters and setters are ignored for brevity,
+      // but they're required for Room to work.
+    }
+
+用 @Dao 注解定义 DAO 类，DAO 是抽象类，由 Room 在编译过程中生成实体类，就跟 Retrofit 中定义 API 接口类，Dagger2 中定义 Component 一样。
+
+    @Dao
+    public interface UserDao {
+      @Query("SELECT * FROM user")
+      List<User> getAll();
+
+      @Query("SELECT * FROM user WHERE uid IN (:userIds)")
+      List<User> loadAllByIds(int[] userIds);
+
+      @Query("SELECT * FROM user WHERE first_name LIKE :first AND "
+              + "last_name LIKE :last LIMIT 1")
+      User findByName(String first, String last);
+
+      @Insert
+      void insertAll(User... users);
+
+      @Delete
+      void delete(User user);
+    }
+
+用 @Database 注解定义 Database 类，同样也是抽象类。(继续联想 Retrofit 和 Dagger2 的用法)。
+
+    @Database(entities = {User.class}, version = 1)
+    public abstract class AppDatabase extends RoomDatabase {
+      public abstract UserDao userDao();
+    }
+
+最后，如何使用，先得到 AppDatabase 的实例 (最好用单例模式，全局只需要一个实例)，然后从 AppDatabase 的实例中得到 useDao。
+
+    AppDatabase db = Room.databaseBuilder(getApplicationContext(),
+            AppDatabase.class, "database-name").build();
+    UserDao userDao = db.userDao();
+
+剩下就是这三个组件的一些常见用法，简单了解，需要时再详细看文档。
+
+对于 Entity：
+
+- 可以用 @Ingnore 忽略不需要持久化到数据库的属性
+- 用 @Entity(tableName='table_name') 指定表名，而不使用默认的类名作为表名
+- 用 @Index 添加索引
+- 用 @ForeignKey 指定外键和关联
+- @Embedded，嵌套对象，类似 GraphQL 中的 Fragment
+
+对于 DAO：
+
+- @Insert
+- @Delete
+- @Update
+- @Query
+- 向查询中传递参数：`@Query("SELECT * FROM user WHERE age > :minAge")`
+- 返回子集，即非 Entity 对象，而是常规的 POJO 对象
+- 可观察的查询：LiveData，可以监听数据库的变化，从而自动更新 UI (?? 是这么理解吧)
+- 查询返回 RxJava2 的 Publisher 和 Flowable 对象 (暂时不理解)
+- 查询中返回原始的 cursor 对象，不推荐使用
+- 多表查询，支持 join
+
+使用类型转换器，TypeConverter，把自定义的数据类型，转换成 Room 能够持久化的数据类型。
+
+定义转换器：
+
+    public class Converters {
+      @TypeConverter
+      public static Date fromTimestamp(Long value) {
+        return value == null ? null : new Date(value);
+      }
+
+      @TypeConverter
+      public static Long dateToTimestamp(Date date) {
+        return date == null ? null : date.getTime();
+      }
+    }
+
+然后把 TypeConverter 通过 @TypeConverters 注解添加到 AppDatabase 类中。(为什么全靠注解??)
+
+    @Database(entities = {User.java}, version = 1)
+    @TypeConverters({Converter.class})
+    public abstract class AppDatabase extends RoomDatabase {
+      public abstract UserDao userDao();
+    }
+
+(想想 Databinding 的 @BindingConversion，是不是很想似，一样是注解，一样是静态方法，实现类型转换)
+
+#### 数据库迁移
+
+实现 Migration 类的 migrate 方法，在 migrate 方法中通过执行 sql 语句实现迁移，并将 Migration 实例注册到生成 Database 的 builder 中。
+
+    Room.databaseBuilder(getApplicationContext(), MyDb.class, "database-name")
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3).build();
+
+    static final Migration MIGRATION_1_2 = new Migration(1, 2) {
+      @Override
+      public void migrate(SupportSQLiteDatabase database) {
+          database.execSQL("CREATE TABLE `Fruit` (`id` INTEGER, "
+                  + "`name` TEXT, PRIMARY KEY(`id`))");
+      }
+    };
+
+    static final Migration MIGRATION_2_3 = new Migration(2, 3) {
+      @Override
+      public void migrate(SupportSQLiteDatabase database) {
+          database.execSQL("ALTER TABLE Book "
+                  + " ADD COLUMN pub_year INTEGER");
+      }
+    };
+
+#### 测试迁移
+
+略。
+
 ### Codelab
 
 1. Lifecycle
 
    通过代码实践，掌握了其基本用法，ViewModel 里可以直接存放原始 model，不一定用来放 LiveData；LiveData 可以直接拿来用，不一定要实现派生类。
+
+1. Room
+
+   理解了用 LiveData 来观察 Room 的查询结果，并在 ViewModel 使用 Transformations.map() 对 LiveData 进行转换。
+
+        // CustomResultViewModel.Java
+        public void createDb() {
+            appDb = AppDatabase.getInMemoryDatabase(this.getApplication());
+            DatabaseInitializer.populateAsync(appDb);
+
+            LiveData<List<LoanWithUserAndBook>> loans =
+                    appDb.loanModel().findLoansByNameAfter("Mike", getYesterday());
+            loansStr = Transformations.map(loans, new Function<List<LoanWithUserAndBook>, String>() {
+                @Override
+                public String apply(List<LoanWithUserAndBook> loansWithUserAndBook) {
+                    StringBuilder sb = new StringBuilder();
+                    SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm",
+                            Locale.US);
+
+                    for (LoanWithUserAndBook loan : loansWithUserAndBook) {
+                        sb.append(String.format("%s\n  (Returned: %s)\n",
+                                loan.bookTitle,
+                                simpleDateFormat.format(loan.endTime)));
+                    }
+                    return sb.toString();
+                }
+            });
+        }
+
+        // Activity
+        viewModel.loansStr.observe(this, new Observer<String>() {
+            @Override
+            public void onChanged(@Nullable String s) {
+                tvLoans.setText(s);
+            }
+        });
+
+### Guide to App Architecture
+
+通用的架构原则：
+
+1. 关注点分离。保持 Activity/Fragment 的简洁，任何与 UI 交互无关的代码不要放到这里。
+1. 用 model 驱动 UI，最好是持久化 model。
+
+接着用了一个例子来展示使用 Architecture Components 来架构一个 App。
+
+最终的架构图：
+
+![](https://developer.android.com/topic/libraries/architecture/images/final-architecture.png)
+
+一些补充：
+
+- Activity/Fragment 实际是 Controller，它们与真正的 View (xml 布局) 之间还可以继续用 data-binding 来简化。
+- Repository 应该用单例模式，可以用 Dagger2 的 @Singleton 来注解它。
+- 在这种架构下，Presenter 似乎是没有必要了。
+
+### Google Samples Code
+
+1. BasicSample - 很好理解。
+1. PersistenceContentProviderSample
+1. GithubBrowserSample - 认真地研究一下，然后参照这个例子写一个 Gank 的 App?
