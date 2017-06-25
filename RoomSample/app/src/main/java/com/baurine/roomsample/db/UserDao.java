@@ -30,7 +30,7 @@ public interface UserDao {
     @Delete
     void deleteUser(User user);
 
-    @Query("delete from user where name like :badName OR lastName like :badName")
+    @Query("delete from user where name like :badName OR last_name like :badName")
     int deleteUsersByName(String badName);
 
     @Insert(onConflict = IGNORE)
