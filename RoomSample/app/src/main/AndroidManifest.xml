@@ -22,6 +22,12 @@
                 <category android:name="android.intent.category.DEFAULT"/>
             </intent-filter>
         </activity>
+        <activity android:name=".BooksActivity">
+            <intent-filter>
+                <action android:name="com.baurine.roomsample.BooksActivity"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+        </activity>
     </application>
 
 </manifest>
