@@ -8,6 +8,8 @@ import com.baurine.roomsample.db.AppDatabase;
 import com.baurine.roomsample.db.Book;
 import com.baurine.roomsample.db.utils.DatabaseInitializer;
 
+import java.util.Calendar;
+import java.util.Date;
 import java.util.List;
 
 /**
@@ -23,7 +25,11 @@ public class BooksBorrowedByUserViewModel extends AndroidViewModel {
         super(application);
 
         createDb();
-        books = appDb.bookModel().findBooksBorrowedByName("Mike");
+
+        Calendar calendar = Calendar.getInstance();
+        calendar.add(Calendar.DATE, -1);
+        Date yesterday = calendar.getTime();
+        books = appDb.bookModel().findBooksBorrowedByNameAfter("Mike", yesterday);
     }
 
     public void createDb() {
