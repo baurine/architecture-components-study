@@ -6,25 +6,20 @@
     android:layout_margin="16dp"
     android:orientation="vertical">
 
-    <Button
+    <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:onClick="onClick"
-        android:text="UsersActivity"
-        android:textAllCaps="false"/>
+        android:text="Loans by Mike:"/>
+
+    <TextView
+        android:id="@+id/tv_loans"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
 
     <Button
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:onClick="onClick"
-        android:text="BooksActivity"
-        android:textAllCaps="false"/>
-
-    <Button
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:onClick="onClick"
-        android:text="LoansActivity"
-        android:textAllCaps="false"/>
+        android:onClick="onRefresh"
+        android:text="Refresh"/>
 
 </LinearLayout>

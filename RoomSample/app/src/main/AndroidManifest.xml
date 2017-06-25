@@ -28,6 +28,12 @@
                 <category android:name="android.intent.category.DEFAULT"/>
             </intent-filter>
         </activity>
+        <activity android:name=".LoansActivity">
+            <intent-filter>
+                <action android:name="com.baurine.roomsample.LoansActivity"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+            </intent-filter>
+        </activity>
     </application>
 
 </manifest>
