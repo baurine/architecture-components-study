@@ -2,6 +2,15 @@
 
 Google 在 Google I/O 2017 发布的 Android Architecture Components，包括 Lifecycle，LiveData，ViewModel 以及 Room 组成。其中 Lifecycle 是基础，LiveData 用到 Lifecycle，而 ViewModel 一般是作为 LiveData 的容器，因此，它们逐层递进。个人觉得 LiveData 是这里稍微最复杂的部分。Room 作为 ORM，比较独立，但一般会和 LiveData 配合使用。
 
+2017/8/4，在公司 Creative-Friday 上做了关于这个主题的分享，对它的理解更深入了一点。
+
+总的概括来说：
+
+1. Room 用来操作数据库，当向 Room 查询数据集合时，即可以返回 `List<T>`，也可以返回 `LiveData<List<T>>`。
+1. LiveData 是对普通数据的包装，它可以注册观察者，当调用 LiveData 的 setValue() 方法改变 LiveData 包裹的数据时，它会自动通知所有的观察者。
+1. ViewModel 也是数据的容器，用来存放数据，它不像 LiveData 是用来自动触发变化的，而是用来延长数据的生命周期，ViewModel 具有比 Activity 更长的生命周期，它可以使 ViewModel 中的数据在 Activity 被异常 destroy 后不被释放掉，从而免去了再次获取数据。有了 ViewModel 后，以前直接放在 Activity 中的数据应该移到 ViewModel 中，LiveData 也应该最好放在 ViewModel 中。
+1. 当向 LiveData 注册观察者时，调用 `observe(LifecycleOwner, observer)`，第一个参数是 LifecycleOwner。
+
 ## References
 
 1. [Android Architecture Components](https://developer.android.com/topic/libraries/architecture/index.html) (发现不少笔误...)
@@ -39,7 +48,9 @@ source: [使用 Lifecycle 处理生命周期](http://www.jcodecraeer.com/a/anzhu
 1. LifecycleOwner：持有 Lifecycle 实例的类，一般由生命周期组件(如 Activity/Fragment)实现。派生类 LifecycleRegistryOwner，由 LifecycleActivity/LifecycleFragment 实现，它们内部持有 LifecycleRegistry 实例。
 1. LifecycleObserver：注册到 Lifecycle 中的观察者，由各个业务实现。
 
-(待补充一张图)
+![](../art/lifecycle-aware.png)
+
+(核心实现在 LifecycleRegistry 类中。)
 
 在没有使用 Lifecycle 之前，我们把主要的逻辑都写在每个 Activity/Fragment 的生命周期函数中，每个 Activity/Fragment 的代码都会不一样，由 Activity/Fragment 主动去调用我们实现的这些类的方法，它们紧密地耦合在一起。比如示例中的代码：
 
@@ -174,7 +185,7 @@ Lifecycle 的最佳实践：略，理解。
 
 之后再看一下 Lifecycle 的源码进行深入了解。
 
-看了源码 (待补充：类之间的继承关系图)，跟我猜想的大致差不多，只是实现上复杂了很多，唯一疑惑的地方就是，在 LifeclcyeActivity 的实现中，并没有显式地在各个生命周期函数中操作 lifecycleRegistry，那它是怎么把当前的状态值传给 lifecycleRegistry，通知各个 observer 的呢? (难道这并不是真正的代码?)
+看了源码 (类之间的继承关系图如上图所示)，跟我猜想的大致差不多，只是实现上复杂了很多，唯一疑惑的地方就是，在 LifeclcyeActivity 的实现中，并没有显式地在各个生命周期函数中操作 lifecycleRegistry，那它是怎么把当前的状态值传给 lifecycleRegistry，通知各个 observer 的呢? (难道这并不是真正的代码?)
 
     public class LifecycleActivity extends FragmentActivity implements LifecycleRegistryOwner {
         private final LifecycleRegistry mRegistry = new LifecycleRegistry(this);
@@ -189,15 +200,19 @@ Lifecycle 的最佳实践：略，理解。
 
 (感觉和 Databinding 中的 ObservableField 有一点相似之处，对原始的 model 进行一层包装，但 LiveData 多了生命周期的处理)
 
+![](../art/livedata.png)
+
 疑问：
 
 1. LiveData 和 MutableLiveData 的区别，从名字上后者是表示易变的，但从代码实现上看，没什么区别啊。
 
+   答案：LiveData 是抽象类，MutableLiveData 是它的实现类。MutableLiveData 可以直接拿来用。
+
 #### 基本理解
 
-LiveData 和 LifecycleOwner 一起配合使用。LiveData 一般用单例模式，它可以向自身注册多个普通的 Observer，但每个注册的 observer 都必须和一个 LifecycleOwner 关联，每次注册观察者时，LiveData 会把 owner 和 observer 再打包成一个 LifecycleBoundObserver (LifecycleBoundObserver 是 LiveData 的内部类，所以它自然也引用了 LiveData)，然后把这个新的 observer 同时放入 LiveData 对象自身内部的观察者队列，以及 owner 内部的观察者队列中。(相当于新的 observer 同时注册到了 LiveData 和 LifecycleOwner 中，但不同的 observer 注册到的 LiveData 是同一个，LifecycleOwner 可以是多个，LiveData 和 LifecycleOwner 的关系是一对多)。
+(虽然 LiveData 的内部看着比较复杂，但不要在太意，知道怎么用它就行了。用它来包裹一个原始数据，注册观察者来监听这个数据的变化，调用 setValue() 来改变数据，内部自动通知所有观察者。)
 
-(待补一张图)
+LiveData 和 LifecycleOwner 一起配合使用。LiveData 一般用单例模式，它可以向自身注册多个普通的 Observer，但每个注册的 observer 都必须和一个 LifecycleOwner 关联，每次注册观察者时，LiveData 会把 owner 和 observer 再打包成一个 LifecycleBoundObserver (LifecycleBoundObserver 是 LiveData 的内部类，所以它自然也引用了 LiveData)，然后把这个新的 observer 同时放入 LiveData 对象自身内部的观察者队列，以及 owner 内部的观察者队列中。(相当于新的 observer 同时注册到了 LiveData 和 LifecycleOwner 中，但不同的 observer 注册到的 LiveData 是同一个，LifecycleOwner 可以是多个，LiveData 和 LifecycleOwner 的关系是一对多)。
 
     // LiveData.java
     public void observe(LifecycleOwner owner, Observer<T> observer) {
